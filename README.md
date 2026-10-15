@@ -4,6 +4,25 @@
 
 An AI assistant for a software agency, built with [Mastra](https://mastra.ai) and [Next.js](https://nextjs.org), running on [Groq](https://groq.com)'s free tier. It answers questions about projects, sprints, tasks, and team workload by querying a local SQLite database, so every answer is grounded in real data instead of guesses.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/chat.png" alt="Chat view showing the assistant answering questions about overdue tasks and client budgets" width="800">
+</p>
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/home.png" alt="Home screen with suggested questions and the chat box">
+      <br><sub><b>Home</b> — suggested questions to get started</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/schema.png" alt="Chat view with the database schema panel open on the right">
+      <br><sub><b>Schema panel</b> — browse the tables the assistant can query</sub>
+    </td>
+  </tr>
+</table>
+
 ## What it does
 
 The assistant plays the role of an internal helper for **Brightloop Studio**, a fictional software agency. You can ask things like:
