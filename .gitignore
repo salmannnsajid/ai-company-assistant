@@ -12,3 +12,8 @@ src/mastra/public/
 .vercel
 *.duckdb
 *.duckdb.wal
+
+# next.js
+.next
+next-env.d.ts
+*.tsbuildinfo

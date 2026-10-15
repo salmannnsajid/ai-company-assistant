@@ -8,21 +8,35 @@ import {
   Observability,
   SensitiveDataFilter,
 } from '@mastra/observability';
-import { agent } from './agents/agent';
-import { startScheduleTool, stopScheduleTool } from './tools/schedule-tools';
+import { companyAgent } from './agents/company-agent';
+import {
+  getOverdueTasksTool,
+  getPersonWorkloadTool,
+  getProjectStatusTool,
+  getSprintTasksTool,
+  listProjectsTool,
+  runSqlQueryTool,
+} from './tools/company-tools';
+import { dbUrl } from './db-url';
 
 export const mastra = new Mastra({
   bundler: {
     externals: ['@duckdb/node-bindings'],
   },
-  agents: { agent },
-  tools: { startScheduleTool, stopScheduleTool },
+  agents: { companyAgent },
+  tools: {
+    listProjectsTool,
+    getProjectStatusTool,
+    getSprintTasksTool,
+    getPersonWorkloadTool,
+    getOverdueTasksTool,
+    runSqlQueryTool,
+  },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new LibSQLStore({
       id: 'mastra-storage',
-      url: process.env.TURSO_DATABASE_URL || 'file:./mastra.db',
-      authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+      url: dbUrl('mastra.db'),
     }),
     domains: {
       observability: await new DuckDBStore().getStore('observability'),
