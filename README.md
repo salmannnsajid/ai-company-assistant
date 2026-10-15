@@ -39,13 +39,13 @@ Behind the scenes, the agent picks the right tool for the question, runs a query
 
 | Feature | Details |
 | --- | --- |
-| 🧰 **Purpose-built tools** | Fixed queries for projects, project status, sprint tasks, team workload, and overdue tasks |
-| 🔍 **Text-to-SQL fallback** | A read-only `SELECT` tool handles any question the fixed tools can't |
-| 🎤 **Voice chat** | Tap the mic, ask out loud, and hear the answer read back. Speech-to-text runs on Groq Whisper |
-| 🧠 **Conversation memory** | Each chat remembers its last 20 messages, so follow-ups work naturally |
-| 🗂️ **Schema panel** | A side panel in the chat UI shows the database tables, columns, keys, and row counts |
-| 📊 **Observability** | Traces are stored in DuckDB and viewable in Mastra Studio |
-| 🛡️ **Safe by design** | The SQL tool runs in SQLite query-only mode, accepts a single `SELECT`, and caps results at 100 rows |
+| **Purpose-built tools** | Fixed queries for projects, project status, sprint tasks, team workload, and overdue tasks |
+| **Text-to-SQL fallback** | A read-only `SELECT` tool handles any question the fixed tools can't |
+| **Voice chat** | Tap the mic, ask out loud, and hear the answer read back. Speech-to-text runs on Groq Whisper |
+| **Conversation memory** | Each chat remembers its last 20 messages, so follow-ups work naturally |
+| **Schema panel** | A side panel in the chat UI shows the database tables, columns, keys, and row counts |
+| **Observability** | Traces are stored in DuckDB and viewable in Mastra Studio |
+| **Safe by design** | The SQL tool runs in SQLite query-only mode, accepts a single `SELECT`, and caps results at 100 rows |
 
 ## Tech stack
 
@@ -126,13 +126,3 @@ All databases live in the project root and are ignored by git.
 | `company.db` | The fictional company data (people, projects, sprints, tasks) |
 | `mastra.db` | Agent conversation memory |
 | `mastra.duckdb` | Traces for Mastra Studio |
-
-## Learn more
-
-- [Mastra documentation](https://mastra.ai/docs/)
-- [Mastra course](https://mastra.ai/learn) and [YouTube channel](https://youtube.com/@mastra-ai)
-- [Groq console](https://console.groq.com)
-
-## License
-
-Apache-2.0
