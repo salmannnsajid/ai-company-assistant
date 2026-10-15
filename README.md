@@ -14,11 +14,11 @@ An AI assistant for a software agency, built with [Mastra](https://mastra.ai) an
   <tr>
     <td width="50%" align="center">
       <img src="docs/screenshots/home.png" alt="Home screen with suggested questions and the chat box">
-      <br><sub><b>Home</b> — suggested questions to get started</sub>
+      <br><sub><b>Home</b>: suggested questions to get started</sub>
     </td>
     <td width="50%" align="center">
       <img src="docs/screenshots/schema.png" alt="Chat view with the database schema panel open on the right">
-      <br><sub><b>Schema panel</b> — browse the tables the assistant can query</sub>
+      <br><sub><b>Schema panel</b>: browse the tables the assistant can query</sub>
     </td>
   </tr>
 </table>
@@ -29,7 +29,7 @@ The assistant plays the role of an internal helper for **Brightloop Studio**, a 
 
 - *Which projects are at risk?*
 - *Is anyone overloaded this week?*
-- *What's in the current sprint for the mobile app?*
+- *What's in the current sprint for the Clinic Booking App?*
 - *Which client has the biggest budget?*
 - *Show me everything that's overdue.*
 
@@ -45,7 +45,7 @@ Behind the scenes, the agent picks the right tool for the question, runs a query
 | 🧠 **Conversation memory** | Each chat remembers its last 20 messages, so follow-ups work naturally |
 | 🗂️ **Schema panel** | A side panel in the chat UI shows the database tables, columns, keys, and row counts |
 | 📊 **Observability** | Traces are stored in DuckDB and viewable in Mastra Studio |
-| 🛡️ **Safe by design** | The SQL tool opens the database read-only, accepts a single `SELECT`, and caps results at 100 rows |
+| 🛡️ **Safe by design** | The SQL tool runs in SQLite query-only mode, accepts a single `SELECT`, and caps results at 100 rows |
 
 ## Tech stack
 
@@ -90,6 +90,8 @@ npm run dev    # Mastra Studio at http://localhost:4111
 
 You can run either or both. They share the same databases.
 
+> **Note:** Groq's free tier has a per-minute token limit. If you ask several questions in quick succession, the app will show a short "rate limit" message. Wait about 10 seconds and try again.
+
 ## Using voice
 
 Tap 🎤, ask your question, then tap ⏹. The audio is transcribed with Groq Whisper, sent to the agent, and the reply is read aloud by the browser. Spoken questions get shorter answers so they're easier to listen to.
@@ -130,3 +132,7 @@ All databases live in the project root and are ignored by git.
 - [Mastra documentation](https://mastra.ai/docs/)
 - [Mastra course](https://mastra.ai/learn) and [YouTube channel](https://youtube.com/@mastra-ai)
 - [Groq console](https://console.groq.com)
+
+## License
+
+Apache-2.0
