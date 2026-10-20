@@ -17,6 +17,8 @@ export async function POST(req: Request) {
     params: {
       messages,
       trigger,
+      // Each tool call uses a step; the default of 5 can run out before the agent writes its answer.
+      maxSteps: 10,
       memory: { thread: id, resource: 'web-user' },
       ...(voice && { system: VOICE_INSTRUCTIONS }),
     },

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, type ToolUIPart } from 'ai';
+import { DefaultChatTransport, type ToolUIPart, type UIMessage } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SchemaPanel } from './schema-panel';
@@ -14,15 +14,43 @@ const SUGGESTIONS = [
   'Which client has the biggest budget?',
 ];
 
-// Friendly labels for the agent's tool calls.
-const TOOL_LABELS: Record<string, string> = {
-  list_projects: 'Looked up projects',
-  get_project_status: 'Checked project status',
-  get_sprint_tasks: 'Pulled sprint tasks',
-  get_person_workload: 'Checked workload',
-  get_overdue_tasks: 'Found overdue tasks',
-  run_sql_query: 'Queried the database',
+// Friendly labels for the agent's tool calls: [while running, when done].
+const TOOL_LABELS: Record<string, [string, string]> = {
+  list_projects: ['Looking up projects', 'Looked up projects'],
+  get_project_status: ['Checking project status', 'Checked project status'],
+  get_sprint_tasks: ['Pulling sprint tasks', 'Pulled sprint tasks'],
+  get_person_workload: ['Checking workload', 'Checked workload'],
+  get_overdue_tasks: ['Finding overdue tasks', 'Found overdue tasks'],
+  run_sql_query: ['Querying the database', 'Queried the database'],
 };
+
+// Shown one at a time while the agent works; the first is shown right away.
+const WORKING_PHRASES = [
+  'Thinking',
+  'Digging into the data',
+  'Flipping through the sprint board',
+  'Crunching the numbers',
+  'Connecting the dots',
+  'Double-checking the details',
+  'Putting your answer together',
+];
+
+type Segment ={ kind: 'text'; text: string } | { kind: 'tools'; parts: ToolUIPart[] };
+
+// Groups a message's parts so consecutive tool calls render as one "steps" block.
+function toSegments(parts: UIMessage['parts']): Segment[] {
+  const segments: Segment[] = [];
+  for (const part of parts) {
+    const last = segments[segments.length - 1];
+    if (part.type === 'text' && part.text.trim()) segments.push({ kind: 'text', text: part.text });
+    // Tool calls show up as parts named "tool-<toolName>".
+    else if (part.type.startsWith('tool-')) {
+      if (last?.kind === 'tools') last.parts.push(part as ToolUIPart);
+      else segments.push({ kind: 'tools', parts: [part as ToolUIPart] });
+    }
+  }
+  return segments;
+}
 
 export default function ChatPage() {
   const [input, setInput] = useState('');
@@ -33,7 +61,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const askedByVoice = useRef(false); // read the reply aloud only if the question was spoken
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, regenerate, stop, status, error } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
     onFinish: ({ message }) => {
       if (!askedByVoice.current) return;
@@ -42,6 +70,22 @@ export default function ChatPage() {
     },
   });
   const busy = status === 'submitted' || status === 'streaming' || transcribing;
+
+  // "Working" lasts from sending until the answer text starts. One status line covers it all,
+  // cycling phrases on a timer so it doesn't flicker as tool calls start and finish.
+  const lastMessage = messages[messages.length - 1];
+  const working =
+    status === 'submitted' ||
+    (status === 'streaming' && !lastMessage.parts.some((p) => p.type === 'text' && p.text.trim()));
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  useEffect(() => {
+    if (!working) {
+      setPhraseIndex(0);
+      return;
+    }
+    const id = setInterval(() => setPhraseIndex((i) => (i % (WORKING_PHRASES.length - 1)) + 1), 2500);
+    return () => clearInterval(id);
+  }, [working]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -134,70 +178,79 @@ export default function ChatPage() {
                 </div>
               )}
 
-              {messages.map((message) =>
-                message.role === 'user' ? (
+              {messages.map((message, index) => {
+                const isLast = index === messages.length - 1;
+                return message.role === 'user' ? (
                   <div key={message.id} className="flex justify-end">
                     <div className="max-w-[80%] rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-accent-fg">
                       {message.parts.map((part, i) => (part.type === 'text' ? <span key={i}>{part.text}</span> : null))}
                     </div>
                   </div>
                 ) : (
-                  <div key={message.id} className="flex gap-3">
+                  <div key={message.id} className="group flex gap-3">
                     <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-accent">
                       <SparkIcon className="size-4" />
                     </div>
                     <div className="min-w-0 flex-1 space-y-3">
-                      {message.parts.map((part, i) => {
-                        if (part.type === 'text') {
-                          return (
-                            <div key={i} className="markdown">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  table: ({ children }) => (
-                                    <div className="table-wrap">
-                                      <table>{children}</table>
-                                    </div>
-                                  ),
-                                }}
-                              >
-                                {part.text}
-                              </ReactMarkdown>
-                            </div>
-                          );
+                      {toSegments(message.parts).map((segment, i) => {
+                        if (segment.kind === 'tools') {
+                          // While working, the status line below speaks for the steps.
+                          return isLast && working ? null : <Steps key={i} parts={segment.parts} />;
                         }
-                        // Tool calls show up as parts named "tool-<toolName>".
-                        if (part.type.startsWith('tool-')) {
-                          return <ToolChip key={i} part={part as ToolUIPart} />;
-                        }
-                        return null;
+                        return (
+                          <div key={i} className="markdown">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                table: ({ children }) => (
+                                  <div className="table-wrap">
+                                    <table>{children}</table>
+                                  </div>
+                                ),
+                              }}
+                            >
+                              {segment.text}
+                            </ReactMarkdown>
+                          </div>
+                        );
                       })}
+                      {isLast && working && <Typing label={WORKING_PHRASES[phraseIndex]} />}
+                      {!(isLast && busy) && (
+                        <MessageActions
+                          text={toSegments(message.parts)
+                            .map((s) => (s.kind === 'text' ? s.text : ''))
+                            .join('\n\n')}
+                          onRetry={isLast ? () => regenerate() : undefined}
+                        />
+                      )}
                     </div>
                   </div>
-                ),
-              )}
+                );
+              })}
 
-              {(status === 'submitted' || transcribing) && (
+              {/* Once the reply's message exists, the status line lives inside it instead (one avatar). */}
+              {(transcribing || (working && lastMessage?.role !== 'assistant')) && (
                 <div className="flex items-center gap-3">
                   <div className="grid size-8 place-items-center rounded-lg bg-surface-2 text-accent">
                     <SparkIcon className="size-4" />
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted">
-                    {transcribing ? 'Transcribing' : 'Thinking'}
-                    <span className="flex gap-1">
-                      {[0, 1, 2].map((d) => (
-                        <span key={d} className="typing-dot size-1.5 rounded-full bg-muted" style={{ animationDelay: `${d * 0.15}s` }} />
-                      ))}
-                    </span>
-                  </div>
+                  <Typing label={transcribing ? 'Transcribing' : WORKING_PHRASES[phraseIndex]} />
                 </div>
               )}
 
               {error && (
-                <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                  {/rate limit/i.test(error.message)
-                    ? 'The free model is busy (rate limit). Wait about 10 seconds and try again.'
-                    : error.message}
+                <div className="flex items-center gap-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+                  <span className="flex-1">
+                    {/rate limit/i.test(error.message)
+                      ? 'The free model is busy (rate limit). Wait about 10 seconds and try again.'
+                      : error.message}
+                  </span>
+                  <button
+                    onClick={() => regenerate()}
+                    className="shrink-0 rounded-lg border border-danger/40 px-3 py-1 font-medium transition hover:bg-danger/10"
+                  >
+                    Try again
+                  </button>
                 </div>
               )}
               <div ref={bottomRef} />
@@ -243,14 +296,25 @@ export default function ChatPage() {
               >
                 {recording ? <StopIcon /> : <MicIcon />}
               </button>
-              <button
-                type="submit"
-                disabled={busy || recording || !input.trim()}
-                aria-label="Send"
-                className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
-              >
-                <SendIcon />
-              </button>
+              {status === 'submitted' || status === 'streaming' ? (
+                <button
+                  type="button"
+                  onClick={() => stop()}
+                  aria-label="Stop"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-fg text-bg transition hover:opacity-90"
+                >
+                  <StopIcon />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={busy || recording || !input.trim()}
+                  aria-label="Send"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30"
+                >
+                  <SendIcon />
+                </button>
+              )}
             </form>
             <p className="mt-2 text-center text-xs text-muted">Answers come from a demo database and can contain mistakes.</p>
           </footer>
@@ -270,19 +334,87 @@ function DatabaseIcon() {
   );
 }
 
-function ToolChip({ part }: { part: ToolUIPart }) {
+const isRunning = (part: ToolUIPart) => part.state === 'input-streaming' || part.state === 'input-available';
+
+function stepLabel(part: ToolUIPart) {
   const name = part.type.slice('tool-'.length);
-  const running = part.state === 'input-streaming' || part.state === 'input-available';
-  const failed = part.state === 'output-error';
+  const [active, done] = TOOL_LABELS[name] ?? [name, name];
+  return isRunning(part) ? active : done;
+}
+
+// One line per run of tool calls: the current step while running, then each kind of step once.
+function Steps({ parts }: { parts: ToolUIPart[] }) {
+  const current = parts.find(isRunning);
+  if (current) return <div className="shimmer w-fit text-sm">{stepLabel(current)}…</div>;
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-muted">
-      {running ? (
-        <span className="size-3 animate-spin rounded-full border-2 border-muted/40 border-t-accent" />
-      ) : (
-        <span className={failed ? 'text-danger' : 'text-emerald-500'}>{failed ? '✕' : '✓'}</span>
-      )}
-      {TOOL_LABELS[name] ?? name}
+    <div className="flex items-center gap-1.5 text-sm text-muted">
+      <span className="text-emerald-500">
+        <CheckIcon />
+      </span>
+      {[...new Set(parts.map(stepLabel))].join(' · ')}
     </div>
+  );
+}
+
+function Typing({ label }: { label: string }) {
+  return <div className="shimmer w-fit text-sm">{label}…</div>;
+}
+
+const ACTION_BUTTON = 'grid size-8 place-items-center rounded-lg transition hover:bg-surface-2 hover:text-fg';
+
+// Copy (and Retry on the latest answer). Hidden until hover on older answers, like ChatGPT.
+function MessageActions({ text, onRetry }: { text: string; onRetry?: () => void }) {
+  const [copied, setCopied] = useState(false);
+  if (!text) return null;
+  return (
+    <div
+      className={`-ml-1.5 -mt-1 flex text-muted transition-opacity ${
+        onRetry ? '' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+      }`}
+    >
+      <button
+        onClick={async () => {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        aria-label={copied ? 'Copied' : 'Copy'}
+        title={copied ? 'Copied' : 'Copy'}
+        className={ACTION_BUTTON}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      {onRetry && (
+        <button onClick={onRetry} aria-label="Retry" title="Retry" className={ACTION_BUTTON}>
+          <RetryIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden>
+      <path d="M5 12l5 5 9-10" />
+    </svg>
+  );
+}
+
+function RetryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />
+    </svg>
   );
 }
 
