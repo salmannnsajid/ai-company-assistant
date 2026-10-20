@@ -1,0 +1,18 @@
+# Installed fresh inside the image (your Mac's native binaries won't run on Linux)
+node_modules
+
+# Secrets: passed in at runtime instead
+.env
+.env.*
+
+# Build output and local databases, recreated inside the image
+.next
+dist
+.mastra
+*.db
+*.db-*
+*.duckdb
+*.duckdb.wal
+
+.git
+docs
