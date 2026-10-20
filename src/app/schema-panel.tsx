@@ -35,7 +35,7 @@ export function SchemaPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {!tables && <p className="text-sm text-muted">Loading…</p>}
+        {!tables && <SchemaSkeleton />}
         {tables?.map((table) => (
           <div key={table.name} className="overflow-hidden rounded-xl border border-line bg-surface">
             <div className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2">
@@ -64,5 +64,32 @@ export function SchemaPanel({ onClose }: { onClose: () => void }) {
         ))}
       </div>
     </aside>
+  );
+}
+
+// Placeholder cards shaped like the table cards, shown while the schema loads.
+const SKELETON_COLUMNS = [5, 8, 4, 6];
+const SKELETON_WIDTHS = ['w-16', 'w-24', 'w-20', 'w-12', 'w-28'];
+
+function SchemaSkeleton() {
+  return (
+    <div className="space-y-3" aria-label="Loading database" role="status">
+      {SKELETON_COLUMNS.map((count, t) => (
+        <div key={t} className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="flex items-center justify-between border-b border-line bg-surface-2 px-3 py-2.5">
+            <span className="h-3.5 w-20 animate-pulse rounded bg-line" />
+            <span className="h-3 w-12 animate-pulse rounded bg-line" />
+          </div>
+          <ul className="divide-y divide-line">
+            {Array.from({ length: count }, (_, c) => (
+              <li key={c} className="flex items-center px-3 py-2">
+                <span className={`h-3 animate-pulse rounded bg-surface-2 ${SKELETON_WIDTHS[(t + c) % SKELETON_WIDTHS.length]}`} />
+                <span className="ml-auto h-3 w-10 animate-pulse rounded bg-surface-2" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
