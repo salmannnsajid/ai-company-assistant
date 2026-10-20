@@ -1,0 +1,29 @@
+# Checks every push and pull request. Render waits for these to pass before deploying
+# (Auto-Deploy: "After CI Checks Pass").
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Generates the route types (and next-env.d.ts) that tsc needs; both are gitignored.
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Same build Render runs, so a broken Dockerfile fails here instead of on deploy.
+      - run: docker build -t company-assistant .
