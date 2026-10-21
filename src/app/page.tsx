@@ -153,10 +153,10 @@ export default function ChatPage() {
 
       <div className="relative flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+          <main className="scroll-thin flex-1 overflow-y-auto">
+            <div className="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-4 py-8">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center pt-[12vh] text-center">
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
                   <div className="mb-5 grid size-14 place-items-center rounded-2xl bg-accent text-accent-fg shadow-lg shadow-accent/25">
                     <SparkIcon className="size-7" />
                   </div>
