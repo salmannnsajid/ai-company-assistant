@@ -203,7 +203,7 @@ export default function ChatPage() {
                               remarkPlugins={[remarkGfm]}
                               components={{
                                 table: ({ children }) => (
-                                  <div className="table-wrap">
+                                  <div className="table-wrap scroll-thin">
                                     <table>{children}</table>
                                   </div>
                                 ),
@@ -282,7 +282,7 @@ export default function ChatPage() {
                   }}
                   rows={1}
                   placeholder="Ask about projects, sprints, or the team…"
-                  className="field-sizing-content max-h-40 flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] outline-none placeholder:text-muted"
+                  className="scroll-thin field-sizing-content max-h-40 flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] outline-none placeholder:text-muted"
                 />
               )}
               <button

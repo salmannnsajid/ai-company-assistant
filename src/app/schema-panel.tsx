@@ -34,7 +34,7 @@ export function SchemaPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      <div className="scroll-thin flex-1 space-y-3 overflow-y-auto p-4">
         {!tables && <SchemaSkeleton />}
         {tables?.map((table) => (
           <div key={table.name} className="overflow-hidden rounded-xl border border-line bg-surface">
