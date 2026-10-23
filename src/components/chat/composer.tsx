@@ -12,10 +12,10 @@ type ComposerProps = {
 // The input row: type or dictate a question, send it, or stop a reply in progress.
 export function Composer({ streaming, onSend, onStop }: ComposerProps) {
   const [input, setInput] = useState('');
-  const { listening, transcribing, start, stop, cancel } = useDictation(setInput);
+  const { recording, transcribing, start, stop, cancel } = useDictation(setInput);
 
   function toggleMic() {
-    if (listening) {
+    if (recording) {
       stop();
       return;
     }
@@ -23,14 +23,14 @@ export function Composer({ streaming, onSend, onStop }: ComposerProps) {
   }
 
   function submit() {
-    // Drop anything the mic is still producing, so it can't land back in the empty box.
-    if (listening) cancel();
+    // Drop a clip still being recorded, so its text can't land back in the empty box.
+    if (recording) cancel();
     if (!input.trim() || streaming || transcribing) return;
     onSend(input);
     setInput('');
   }
 
-  const placeholder = listening
+  const placeholder = recording
     ? 'Listening…'
     : transcribing
       ? 'Transcribing…'
@@ -61,13 +61,13 @@ export function Composer({ streaming, onSend, onStop }: ComposerProps) {
         type="button"
         onClick={toggleMic}
         disabled={transcribing}
-        aria-label={listening ? 'Stop dictation' : 'Dictate'}
-        aria-pressed={listening}
+        aria-label={recording ? 'Stop recording' : 'Talk'}
+        aria-pressed={recording}
         className={`grid size-10 shrink-0 place-items-center rounded-xl transition disabled:opacity-40 ${
-          listening ? 'animate-pulse bg-danger text-white' : 'text-muted hover:bg-surface-2 hover:text-fg'
+          recording ? 'animate-pulse bg-danger text-white' : 'text-muted hover:bg-surface-2 hover:text-fg'
         }`}
       >
-        {listening ? <StopIcon /> : <MicIcon />}
+        {recording ? <StopIcon /> : <MicIcon />}
       </button>
       {streaming ? (
         <button

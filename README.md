@@ -41,7 +41,7 @@ Behind the scenes, the agent picks the right tool for the question, runs a query
 | --- | --- |
 | **Purpose-built tools** | Fixed queries for projects, project status, sprint tasks, team workload, and overdue tasks |
 | **Text-to-SQL fallback** | A read-only `SELECT` tool handles any question the fixed tools can't |
-| **Voice input** | Dictate a question and watch the words appear in the message box as you speak, then send it like any other message |
+| **Voice input** | Ask out loud, get the text in the message box via Groq Whisper, then send it like any other message |
 | **Conversation memory** | Each chat remembers its last 20 messages, so follow-ups work naturally |
 | **Schema panel** | A side panel in the chat UI shows the database tables, columns, keys, and row counts |
 | **Observability** | Traces are stored in DuckDB and viewable in Mastra Studio |
@@ -96,7 +96,7 @@ You can run either or both. They share the same databases.
 
 ## Using voice
 
-Tap 🎤 and start talking: the words land in the message box as you speak, so you can read them back, fix anything, and press send when you are ready. Browsers without speech recognition (Firefox) record the clip instead and transcribe it with Groq Whisper when you tap ⏹.
+Tap 🎤, ask your question, then tap ⏹. Words appear in the message box as you speak where the browser can recognise speech itself, and the recording is transcribed with Groq Whisper when you stop — its text replaces the preview, so the message you send is always Whisper's. Read it back, fix anything, and press send when you are ready.
 
 The mic is an input method only — answers always come back as text in the chat.
 
@@ -110,14 +110,14 @@ src/
 │   ├── opengraph-image.tsx       Share card, generated at build time
 │   └── api/
 │       ├── chat/route.ts         Streams agent replies to the chat page
-│       ├── transcribe/route.ts   Speech-to-text via Groq Whisper (dictation fallback)
+│       ├── transcribe/route.ts   Speech-to-text via Groq Whisper
 │       └── schema/route.ts       Returns tables, columns, and row counts
 ├── components/
 │   ├── icons.tsx                 Inline SVG icons
 │   ├── schema-panel.tsx          Database structure viewer
 │   └── chat/                     Header, empty state, messages, composer, error notice
 ├── hooks/
-│   ├── use-dictation.ts          Mic input: live recognition, Whisper fallback
+│   ├── use-dictation.ts          Mic input: record, transcribe, fill the message box
 │   └── use-working-phrase.ts     Cycles the wording of the "working" status line
 ├── lib/
 │   ├── error-text.ts             Turns a failed request into one readable sentence
