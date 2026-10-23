@@ -21,7 +21,17 @@ declare global {
 
 const RecognitionCtor = typeof window === 'undefined' ? undefined : (window.SpeechRecognition ?? window.webkitSpeechRecognition);
 
+const clean = (text: string) => text.replace(/\s+/g, ' ').trim();
 const join = (draft: string, spoken: string) => (draft ? `${draft.trimEnd()} ${spoken}` : spoken);
+
+// Everything the browser is holding for the current session, rebuilt from the whole list.
+// Adding up results as they arrive instead would repeat words: browsers re-deliver results
+// they have already marked final, and `resultIndex` is not a reliable "start from here".
+function sessionText(results: SpeechRecognitionResultList) {
+  let text = '';
+  for (let i = 0; i < results.length; i++) text += `${results[i][0].transcript} `;
+  return text;
+}
 
 /**
  * Dictation for the composer. Where the browser can recognise speech itself (Chrome, Edge,
@@ -33,9 +43,8 @@ const join = (draft: string, spoken: string) => (draft ? `${draft.trimEnd()} ${s
 export function useDictation(onText: (text: string) => void) {
   const [listening, setListening] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const recognitionRef = useRef<Recognition | null>(null);
+  const sessionRef = useRef<{ stop: () => void } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const keepListening = useRef(false);
   const discarded = useRef(false);
 
   function listen(draft: string) {
@@ -44,36 +53,44 @@ export function useDictation(onText: (text: string) => void) {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    let settled = ''; // words the browser has committed to this session
+    let live = true; // cleared once this session is done, so it can never restart or write again
+    let carried = ''; // what was said in earlier sessions of this dictation
+    let spoken = ''; // the current session
+
     recognition.onresult = (event) => {
-      let pending = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) settled += result[0].transcript;
-        else pending += result[0].transcript;
-      }
-      onText(join(draft, (settled + pending).trimStart()));
+      spoken = sessionText(event.results);
+      onText(join(draft, clean(`${carried} ${spoken}`)));
     };
     recognition.onerror = (event) => {
       if (event.error === 'no-speech') return; // just a pause; onend restarts below
-      keepListening.current = false;
+      live = false;
       setListening(false);
     };
     recognition.onend = () => {
-      // Browsers end the session at every pause, so keep it going until the user taps stop.
-      if (!keepListening.current) {
+      if (!live) {
         setListening(false);
         return;
       }
+      // Browsers end the session at every pause. The next one starts its results from
+      // scratch, so bank what was said before carrying on.
+      carried = clean(`${carried} ${spoken}`);
+      spoken = '';
       try {
         recognition.start();
       } catch {
+        live = false;
         setListening(false);
       }
     };
 
     recognition.start();
-    recognitionRef.current = recognition;
+    sessionRef.current = {
+      stop: () => {
+        live = false;
+        recognition.onresult = null; // a late result would refill the box after the user moved on
+        recognition.stop();
+      },
+    };
   }
 
   async function record(draft: string) {
@@ -98,7 +115,6 @@ export function useDictation(onText: (text: string) => void) {
   }
 
   function start(draft: string) {
-    keepListening.current = true;
     discarded.current = false;
     setListening(true);
     if (RecognitionCtor) listen(draft);
@@ -108,12 +124,9 @@ export function useDictation(onText: (text: string) => void) {
   // Finish dictating. Recognised words are already in the box; a recording still has to be
   // sent off for transcription.
   function stop() {
-    keepListening.current = false;
-    const recognition = recognitionRef.current;
-    if (recognition) {
-      recognition.onresult = null; // a late result would refill the box after the user moved on
-      recognition.stop();
-      recognitionRef.current = null;
+    if (sessionRef.current) {
+      sessionRef.current.stop();
+      sessionRef.current = null;
       setListening(false);
     }
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
